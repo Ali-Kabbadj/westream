@@ -1,4 +1,3 @@
-// Window creation, resize handlersuse anyhow::{Context, Result};
 use anyhow::{Context, Result};
 use windows::Win32::{
     Foundation::HWND,
@@ -29,8 +28,7 @@ pub fn create_window(config: &WindowConfig) -> Result<HWND> {
     Ok(hwnd)
 }
 
-
-pub fn run_message_loop(hwnd: HWND) -> Result<()> {
+pub fn run_message_loop(_hwnd: HWND) -> Result<()> {
     let mut msg = MSG::default();
     while unsafe { GetMessageW(&mut msg, None, 0, 0) }.into() {
         unsafe {
