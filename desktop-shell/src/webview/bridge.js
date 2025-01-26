@@ -19,15 +19,12 @@
 //       );
 //     }),
 // };
+// Modify sendToNative to match Rust expectations:
 function sendToNative(message) {
-  try {
-    const jsonMessage = JSON.stringify({
-      cmd: message.command,
-      args: message.data || {},
-      timestamp: Date.now(),
-    });
-    window.chrome.webview.postMessage(jsonMessage);
-  } catch (e) {
-    console.error("Message serialization failed:", e);
-  }
+  const msg = {
+    cmd: message.command,
+    args: message.data || {},
+    __timestamp: Date.now(),
+  };
+  window.chrome.webview.postMessage(JSON.stringify(msg));
 }

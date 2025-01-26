@@ -6,12 +6,11 @@ mod webview;
 mod services;
 mod ui;
 
-use std::mem::ManuallyDrop;
 
 use anyhow::{Context, Result};
 use log::info;
-use webview::manager::{self, WebViewManager};
-use windows::Win32::{System::Com, UI::WindowsAndMessaging::{GetWindowLongPtrW, SetWindowLongPtrW, GWLP_USERDATA}};
+use webview::manager;
+use windows::Win32::{System::Com, UI::WindowsAndMessaging::{ SetWindowLongPtrW, GWLP_USERDATA}};
 
 
 
@@ -50,26 +49,18 @@ fn main() -> Result<()> {
 
     
 
-    let webview_manager = ManuallyDrop::new(webview_manager); 
+    let webview_manager = Box::new(webview_manager);
+    let webview_ptr = Box::into_raw(webview_manager);
 
    // Store as a raw pointer in window user data
-    unsafe {
-        SetWindowLongPtrW(
-            hwnd,
-            GWLP_USERDATA,
-            &*webview_manager as *const _ as isize
-        );
-    }
+   unsafe {
+    SetWindowLongPtrW(
+        hwnd,
+        GWLP_USERDATA,
+        webview_ptr as isize
+    );
+}
 
-    //  // Add memory validation
-    // #[cfg(target_os = "windows")]
-    // unsafe {
-    //     windows::Win32::System::Diagnostics::Debug::SetThreadErrorMode(
-    //         windows::Win32::System::Diagnostics::Debug::SEM_FAILCRITICALERRORS,
-    //         std::ptr::null_mut(),
-    //     )?;
-    // }
-    // Run the main message loop
     window::run_message_loop(hwnd)?;
 
 

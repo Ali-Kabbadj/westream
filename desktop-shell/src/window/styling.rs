@@ -18,11 +18,6 @@ pub fn configure_webview_window(hwnd: HWND) {
     }
 }
 
-// pub fn apply_window_styles(hwnd: HWND) {
-
-// }
-
-
 
  #[allow(dead_code)]
  pub fn apply_borderless_style(hwnd: HWND) {

@@ -20,7 +20,6 @@ pub fn create_window(config: &WindowConfig) -> Result<HWND> {
             .context("Win32 window creation failed")?
     };
 
-//    styling::apply_window_styles(hwnd);
 
     unsafe {
         let _ = ShowWindow(hwnd, SW_SHOW);
@@ -30,25 +29,14 @@ pub fn create_window(config: &WindowConfig) -> Result<HWND> {
     Ok(hwnd)
 }
 
-pub fn run_message_loop(_hwnd: HWND) -> Result<()> {
+
+pub fn run_message_loop(hwnd: HWND) -> Result<()> {
     let mut msg = MSG::default();
     while unsafe { GetMessageW(&mut msg, None, 0, 0) }.into() {
-        if unsafe { !IsWindow(Some(_hwnd)).as_bool() } {
-            log::info!("Window was destroyed, exiting run_message_loop");
-            break;
-        }
-       unsafe {
+        unsafe {
+            
             let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
-        }
-        if cfg!(windows) {
-            unsafe {
-                let mut msg = MSG::default();
-                while PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).into() {
-                    let _ = TranslateMessage(&msg);
-                    DispatchMessageW(&msg);
-                }
-            }
         }
     }
     Ok(())

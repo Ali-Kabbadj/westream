@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use windows::{
     core::{HSTRING, PCWSTR},
     Win32::{
-        Foundation::{E_FAIL, E_POINTER, HWND, RECT}, System::WinRT::EventRegistrationToken, UI::WindowsAndMessaging::{DispatchMessageW, IsWindow, PeekMessageW, SetWindowLongPtrW, TranslateMessage, GWLP_USERDATA, MSG, PM_REMOVE}
+        Foundation::{E_POINTER, HWND, LPARAM, RECT, WPARAM}, System::{Com, WinRT::EventRegistrationToken}, UI::WindowsAndMessaging::{DispatchMessageW, IsWindow, PeekMessageW, PostMessageW, SetWindowLongPtrW, TranslateMessage, GWLP_USERDATA, MSG, PM_REMOVE, WM_USER}
     },
 };
 use webview2_com::Microsoft::Web::WebView2::Win32::{
@@ -13,47 +13,15 @@ use webview2_com::CreateCoreWebView2EnvironmentCompletedHandler;
 use webview2_com::CreateCoreWebView2ControllerCompletedHandler;
 
 use crate::services::ServiceManager;
-// import json
 use serde_json::json;
 
 #[windows::core::implement(ICoreWebView2WebMessageReceivedEventHandler)]
 struct WebMessageHandler {
     service_manager: std::sync::Arc<ServiceManager>,
     webview: ICoreWebView2,
+    parent_hwnd: HWND, // Add this field
 }
 
-// Removed duplicate Drop implementation
-
-// impl ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageHandler_Impl {
-//     fn Invoke(
-//         &self,
-//         _sender: windows::core::Ref<'_, ICoreWebView2>,
-//         args: windows::core::Ref<'_, ICoreWebView2WebMessageReceivedEventArgs>,
-//     ) -> windows::core::Result<()> {
-//         log::info!("ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageHandler_Impl");
-//         let args = args.as_ref().ok_or_else(|| windows::core::Error::new(E_POINTER, "Null args"))?;
-        
-//         let mut message = HSTRING::default();
-//         if message.is_empty() {
-//             log::warn!("Received empty WebMessage");
-//             return Ok(()); // Early return instead of crashing
-//         }
-//         unsafe {
-//             args.TryGetWebMessageAsString(&mut message as *mut _ as _)?;
-//         }
-        
-//         // Handle JSON string
-//         let response = self.service_manager.handle_web_message(&message.to_string())
-//             .map_err(|e| windows::core::Error::new(E_FAIL, e.to_string()))?;
-
-//         log::debug!("Posting response: {}", response);
-
-//         // Send response back as string
-//         unsafe { self.webview.PostWebMessageAsString(&HSTRING::from(response)) }?;
-        
-//         Ok(())
-//     }
-// }
 
 impl ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageHandler_Impl {
     fn Invoke(
@@ -64,44 +32,41 @@ impl ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageHandler_Impl
         let args = args.as_ref().ok_or_else(|| windows::core::Error::new(E_POINTER, "Null args"))?;
         
         let mut message = HSTRING::default();
-        unsafe {
-            // 1. First retrieve the message
-            args.TryGetWebMessageAsString(&mut message as *mut _ as _)?;
-        }
+        unsafe { args.TryGetWebMessageAsString(&mut message as *mut _ as _)?; }
 
-        // 2. Validate message after retrieval
         if message.is_empty() {
             log::warn!("Received empty WebMessage");
             return Ok(());
         }
 
-        let message_str = message.to_string();
-        log::debug!("Received WebMessage: {}", message_str);
+        // Convert HWND to usize for thread safety
+        let hwnd_usize = self.parent_hwnd.0 as usize;
+        let service_clone = self.service_manager.clone();
+        
+        // Use a thread-safe channel instead of direct HWND access
+        std::thread::spawn(move || {
+            let _ = unsafe { Com::CoInitializeEx(None, Com::COINIT_APARTMENTTHREADED) }.ok();
 
-        // 3. Add JSON validation
-        let response = match self.service_manager.handle_web_message(&message_str) {
-            Ok(r) => r,
-            Err(e) => {
-                log::error!("Message handling failed: {}", e);
-                // Return error response to frontend
-                serde_json::to_string(&json!({
+            let response = match service_clone.handle_web_message(&message.to_string()) {
+                Ok(r) => r,
+                Err(e) => serde_json::to_string(&json!({
                     "success": false,
                     "error": e.to_string()
-                })).unwrap_or_else(|_| r#"{"success":false,"error":"serialization failed"}"#.into())
+                })).unwrap_or_else(|_| r#"{"success":false}"#.into())
+            };
+
+            // Convert back to HWND in the same thread context
+            let hwnd = HWND(hwnd_usize as isize as *mut std::ffi::c_void);
+            unsafe {
+                let lparam = Box::into_raw(Box::new(response)) as _;
+                if let Err(e) = PostMessageW(Some(hwnd), WM_USER + 1, WPARAM(0), LPARAM(lparam)) {
+                    log::error!("PostMessage failed: {}", e);
+                }
             }
-        };
+                unsafe { Com::CoUninitialize() };
 
-        // 4. Validate response before sending
-        if response.is_empty() {
-            log::warn!("Empty response generated");
-            return Ok(());
-        }
+        });
 
-        log::debug!("Posting response: {}", response);
-        unsafe { 
-            self.webview.PostWebMessageAsString(&HSTRING::from(response))?;
-        }
-        
         Ok(())
     }
 }
@@ -131,12 +96,15 @@ impl WebViewManager {
         let (env_sender, env_receiver) = std::sync::mpsc::channel();
 
         let env_handler = CreateCoreWebView2EnvironmentCompletedHandler::create(
-            Box::new(move |result: windows::core::Result<()>, environment: Option<ICoreWebView2Environment>| {
-                let result: Result<(), windows::core::Error> = result.map_err(|e| e.into());
-                env_sender.send((result, environment.clone())).unwrap();
-                Ok(())
-            })
-        );
+        Box::new(move |result: windows::core::Result<()>, environment: Option<ICoreWebView2Environment>| {
+            // Initialize COM in the callback thread
+            let _ = unsafe { Com::CoInitializeEx(None, Com::COINIT_APARTMENTTHREADED) }.ok();
+            
+            let result: Result<(), windows::core::Error> = result.map_err(|e| e.into());
+            env_sender.send((result, environment.clone())).unwrap();
+            Ok(())
+        })
+    );
 
         unsafe {
             CreateCoreWebView2EnvironmentWithOptions(
@@ -187,7 +155,8 @@ impl WebViewManager {
             while unsafe { PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).into() } {
                 unsafe {
                     if TranslateMessage(&msg).0 == 0 {
-                        // Handle error if needed
+                        log::error!("TranslateMessage failed: {}", std::io::Error::last_os_error());
+                    
                     }
                     DispatchMessageW(&msg);
                 }
@@ -224,10 +193,11 @@ impl WebViewManager {
 
 
 
-     let handler: ICoreWebView2WebMessageReceivedEventHandler = WebMessageHandler {
-            service_manager: service_manager.clone(),
-            webview: webview.clone(),
-        }.into();
+    let handler: ICoreWebView2WebMessageReceivedEventHandler = WebMessageHandler {
+        service_manager: service_manager.clone(),
+        webview: webview.clone(),
+        parent_hwnd: hwnd, // Pass the window handle here
+    }.into();
 
         unsafe {
             webview.add_WebMessageReceived(
@@ -271,23 +241,25 @@ impl WebViewManager {
         Ok(())
     }
 
-
+    pub fn process_messages(&self) {
+        let mut msg = MSG::default();
+        while unsafe { PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).into() } {
+            unsafe {
+                let _ = TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+        }
+    }
     
 }
 
 impl Drop for WebViewManager {
     fn drop(&mut self) {
+         unsafe { Com::CoUninitialize() };
         log::info!("Dropping WebViewManager");
         unsafe {
             // Remove WebView message handler
             let _ = self.webview.remove_WebMessageReceived(self._message_token);
-
-            // if let Some(controller) = self._controller.as_raw() {
-            //     controller.Release();
-            // }
-            // if let Some(webview) = self.webview.as_raw() {
-            //     webview.Release();
-            // }
 
             // Clear window user data to prevent dangling pointers
              if IsWindow(Some(self.hwnd)).as_bool() {

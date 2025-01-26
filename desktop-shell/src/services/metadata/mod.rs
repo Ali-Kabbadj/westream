@@ -20,6 +20,7 @@ impl MockMetadataService {
     }
 
     pub fn search(&self, query: &str) -> Vec<MediaItem> {
+        log::info!("{}",query);
         vec![
             MediaItem {
                 id: "tt1375666".into(),
