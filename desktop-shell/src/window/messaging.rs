@@ -48,13 +48,7 @@ pub(super) unsafe fn create_window_instance(title: &str, width: i32, height: i32
     Ok(hwnd)
 }
 
-
-extern "system" fn wndproc(
-    hwnd: HWND,
-    msg: u32,
-    wparam: WPARAM,
-    lparam: LPARAM,
-) -> LRESULT {
+extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match msg {
         WM_DESTROY => {
             // Proper cleanup sequence
@@ -69,10 +63,11 @@ extern "system" fn wndproc(
         }
         val if val == WM_USER + 1 => {
             // Handle web messages safely
+            log::debug!("Received WM_USER+1 message");
             let response = unsafe { Box::from_raw(lparam.0 as *mut String) };
-            log::debug!("Web response: {}", response);
+            log::debug!("Web response content: {}", response);
             LRESULT(0)
         }
-        _ => unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) }
+        _ => unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) },
     }
 }

@@ -2,10 +2,9 @@ use std::sync::Mutex;
 
 use anyhow::{Context, Result};
 use serde_json::{from_str, json, to_string, Value};
-mod playback;
 mod addons;
 mod metadata;
-
+mod playback;
 
 #[allow(dead_code)]
 pub struct ServiceManager {
@@ -23,20 +22,42 @@ impl ServiceManager {
         })
     }
 
- pub fn handle_web_message(&self, message: &str) -> Result<String> {
-    let value: Value = from_str(message)?;
-    let cmd = value["cmd"].as_str().context("Missing command")?;
-    let args = &value["args"];
+    pub fn handle_web_message(&self, message: &str) -> Result<String> {
+        log::debug!("Received message: {}", message);
+        let value: Value = from_str(message).map_err(|e| {
+            log::error!("JSON parse error: {}", e);
+            e
+        })?;
 
-    let guard = self.mock_metadata.lock().unwrap();
+        let cmd = value["cmd"]
+            .as_str()
+            .context("Missing command")
+            .map_err(|e| {
+                log::error!("Command error: {}", e);
+                e
+            })?;
+        let request_id = value["requestId"].as_str().unwrap_or_default();
+        let args = &value["args"];
+        log::info!(
+            "Handling command '{}' (Request ID: {}) (Args: {})",
+            cmd,
+            request_id,
+            args
+        );
+
+        log::info!("Handling command: {}", cmd);
+
+        let guard = match self.mock_metadata.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                log::error!("Mutex poisoned! Attempting recovery");
+                poisoned.into_inner()
+            }
+        };
 
         let response = match cmd {
-            "search" => {
-                let query = args.as_str().unwrap_or_default();
-                let results = guard.search(query);
-                serde_json::to_value(results)?
-            }
             "getCatalog" => {
+                log::debug!("Processing getCatalog command");
                 let catalog = guard.get_catalog();
                 serde_json::to_value(catalog)?
             }
@@ -44,8 +65,9 @@ impl ServiceManager {
         };
         log::debug!("Sending response: {}", response);
         Ok(to_string(&json!({
-            "success": true,
-            "data": response
+                "requestId": value["requestId"].as_str().unwrap_or_default(),
+                "success": true,
+                "data": response
         }))?)
     }
 }
