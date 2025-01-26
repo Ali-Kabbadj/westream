@@ -1,6 +1,6 @@
 // WebView lifecycle management
 use anyhow::{Context, Result};
-use webview2::{EnvironmentBuilder, ControllerOptions};
+use webview2::EnvironmentBuilder;
 use windows::Win32::Foundation::HWND;
 
 pub struct WebViewManager {

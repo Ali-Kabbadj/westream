@@ -20,6 +20,7 @@ serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.137"
 log = "0.4.25"
 directories = "6.0.0" # For config paths
-
+thiserror = "2.0.11"  # Add this
+env_logger = "0.11.6" # Add this
 
 # winapi = { version = "0.3.9", features = ["winuser"] }

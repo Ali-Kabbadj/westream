@@ -6,14 +6,13 @@ use windows::{
     Win32::{
         Foundation::*,
         UI::WindowsAndMessaging::*,
-        Graphics::Gdi::GetStockObject,
+        Graphics::Gdi::{GetStockObject, HBRUSH, WHITE_BRUSH}, // Add HBRUSH here
         System::LibraryLoader::GetModuleHandleW,
-        Graphics::Gdi::WHITE_BRUSH
     },
 };
 
 
-pub unsafe fn create_window_instance(config: &WindowConfig) -> Result<HWND> {
+pub unsafe fn create_window_instance(config: &crate::config::WindowConfig) -> Result<HWND> {
     let instance = GetModuleHandleW(None)?;
     let class_name = w!("StremioWindowClass");
 
@@ -22,16 +21,16 @@ pub unsafe fn create_window_instance(config: &WindowConfig) -> Result<HWND> {
         lpfnWndProc: Some(wndproc),
         hInstance: instance.into(),
         lpszClassName: class_name,
-        hbrBackground: GetStockObject(WHITE_BRUSH),
+        hbrBackground: HBRUSH(GetStockObject(WHITE_BRUSH).0),
         ..Default::default()
     };
 
     RegisterClassW(&wc);
 
-    CreateWindowExW(
+    let hwnd = CreateWindowExW(
         WINDOW_EX_STYLE::default(),
         class_name,
-        HSTRING::from(config.title.as_str()).as_pcwstr(),
+        PCWSTR(config.title.as_ptr()), // Fixed PCWSTR conversion
         WS_OVERLAPPEDWINDOW,
         config.position.0,
         config.position.1,
@@ -41,7 +40,12 @@ pub unsafe fn create_window_instance(config: &WindowConfig) -> Result<HWND> {
         None,
         instance,
         None,
-    ).ok().context("Window creation failed")
+    );
+    if hwnd.0 == 0 {
+        return Err(anyhow::anyhow!("Window creation failed"));
+    }
+
+    Ok(hwnd)
 }
 
 extern "system" fn wndproc(

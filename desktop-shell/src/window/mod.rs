@@ -5,17 +5,13 @@ use windows::Win32::{
     UI::WindowsAndMessaging::*,
     Graphics::Gdi::UpdateWindow,
 };
+use crate::config::WindowConfig;
 
 
 mod styling;
 mod messaging;
 
-pub struct WindowConfig {
-    pub width: i32,
-    pub height: i32,
-    pub title: String,
-    pub position: (i32, i32),
-}
+
 
 pub fn create_window(config: &WindowConfig) -> Result<HWND> {
     let hwnd = unsafe {
