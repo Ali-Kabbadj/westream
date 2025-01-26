@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "cargo-build",
+      "type": "cargo",
+      "command": "build",
+      "args": [],
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "options": {
+        "cwd": "${workspaceFolder}/desktop-shell"
+      }
+    }
+  ]
+}

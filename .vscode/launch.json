@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Desktop Shell",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/desktop-shell/target/debug/desktop-shell",
+      "args": [],
+      "cwd": "${workspaceFolder}/desktop-shell",
+      "preLaunchTask": "cargo-build"
+    }
+  ]
+}
