@@ -121,4 +121,16 @@ impl WebViewManager {
             _webview: webview,
         })
     }
+
+    pub fn resize(&self, width: i32, height: i32) -> Result<()> {
+        let bounds = RECT {
+            left: 0,
+            top: 0,
+            right: width,
+            bottom: height,
+        };
+        unsafe { self._controller.SetBounds(bounds) }
+            .context("Failed to resize WebView bounds")?;
+        Ok(())
+    }
 }

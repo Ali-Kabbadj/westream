@@ -109,6 +109,11 @@ pub unsafe fn create_window_instance(title: &str, width: i32, height: i32) -> Re
     Ok(hwnd)
 }
 
+use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_SIZE};
+use windows::Win32::Foundation::RECT;
+
+use crate::webview;
+
 extern "system" fn wndproc(
     hwnd: HWND,
     msg: u32,
@@ -118,6 +123,23 @@ extern "system" fn wndproc(
     match msg {
         WM_DESTROY => {
             unsafe { PostQuitMessage(0) };
+            LRESULT(0)
+        }
+        WM_SIZE => {
+            // Get client area dimensions
+            let mut client_rect = RECT::default();
+            unsafe { let _ = GetClientRect(hwnd, &mut client_rect); };
+            
+            let width = client_rect.right - client_rect.left;
+            let height = client_rect.bottom - client_rect.top;
+
+            // Retrieve WebViewManager from window user data
+            let webview_ptr = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) } as *mut webview::WebViewManager;
+            if !webview_ptr.is_null() {
+                let webview_manager = unsafe { &*webview_ptr };
+                let _ = webview_manager.resize(width, height);
+            }
+
             LRESULT(0)
         }
         _ => unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) },
