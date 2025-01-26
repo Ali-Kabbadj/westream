@@ -44,4 +44,6 @@ impl WebViewManager {
         self.webview.navigate(url)?;
         Ok(())
     }
+
+    
 }

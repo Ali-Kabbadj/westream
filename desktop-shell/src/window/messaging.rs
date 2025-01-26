@@ -1,5 +1,4 @@
 // Window event processing
-use super::WindowConfig;
 use anyhow::Result;
 use windows::{
     core::*,
@@ -26,11 +25,12 @@ pub unsafe fn create_window_instance(config: &crate::config::WindowConfig) -> Re
     };
 
     RegisterClassW(&wc);
+    let title_wide: Vec<u16> = config.title.encode_utf16().chain(std::iter::once(0)).collect();
 
     let hwnd = CreateWindowExW(
         WINDOW_EX_STYLE::default(),
         class_name,
-        PCWSTR(config.title.as_ptr()), // Fixed PCWSTR conversion
+        PCWSTR(title_wide.as_ptr()),
         WS_OVERLAPPEDWINDOW,
         config.position.0,
         config.position.1,

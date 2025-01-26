@@ -1,11 +1,17 @@
 use anyhow::Result;
-use log::warn;
+mod playback;
+mod addons;
 
-pub struct ServiceManager;
+pub struct ServiceManager {
+    pub playback: playback::PlaybackService,
+    pub addons: addons::AddonManager,
+}
 
 impl ServiceManager {
     pub fn init() -> Result<Self> {
-        warn!("Services module not fully implemented");
-        Ok(Self)
+        Ok(Self {
+            playback: playback::PlaybackService::new(),
+            addons: addons::AddonManager::new(),
+        })
     }
 }

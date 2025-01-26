@@ -4,18 +4,22 @@ mod utils;
 mod window;
 mod webview;
 mod services;
+mod ui;
 
 use anyhow::{Context, Result};
 use log::info;
 use windows::Win32::System::Com;
 
 
+
 fn main() -> Result<()> {
+    let _ui = ui::UiManager::new();
+
     utils::logging::init_logger()?;
     info!("Starting desktop-shell");
 
-    unsafe { Com::CoInitializeEx(None, Com::COINIT_APARTMENTTHREADED) }
-    .ok()  // Add .ok() here
+    unsafe { Com::CoInitializeEx(Some(std::ptr::null()), Com::COINIT_APARTMENTTHREADED) }
+    .ok() 
     .context("COM initialization failed")?;
 
     let config = config::load().context("Failed to load config")?;

@@ -1,7 +1,7 @@
 // Window creation, resize handlersuse anyhow::{Context, Result};
 use anyhow::{Context, Result};
 use windows::Win32::{
-    Foundation::{HWND, RECT},
+    Foundation::HWND,
     UI::WindowsAndMessaging::*,
     Graphics::Gdi::UpdateWindow,
 };
@@ -18,12 +18,14 @@ pub fn create_window(config: &WindowConfig) -> Result<HWND> {
         messaging::create_window_instance(config)
             .context("Win32 window creation failed")?
     };
-    
+
+   styling::apply_window_styles(hwnd);
+
     unsafe {
         ShowWindow(hwnd, SW_SHOW);
         UpdateWindow(hwnd);
     }
-    
+
     Ok(hwnd)
 }
 
