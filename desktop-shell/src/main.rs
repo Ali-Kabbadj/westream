@@ -28,14 +28,19 @@ fn main() -> Result<()> {
     // Create window
     let hwnd = window::create_window(&config.window).context("Window creation failed")?;
 
+    // Initialize service manager
+    let service_manager = services::ServiceManager::init().context("Failed to create service manager")?;
+
     // Create WebView on the main thread
+    // In main.rs line ~32:
     let webview_manager = manager::WebViewManager::create(
         hwnd,
         config.webview.user_data_path.to_str().context("Invalid user data path")?,
         config.webview.initial_url,
         config.webview.width,
-        config.webview.height
-    ).context("WebView initialization failed")?;
+        config.webview.height,
+        service_manager.into() // Add this as 6th argument
+    )?;
 
 
 

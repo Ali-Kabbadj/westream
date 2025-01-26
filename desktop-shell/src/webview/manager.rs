@@ -2,22 +2,78 @@ use anyhow::{Context, Result};
 use windows::{
     core::{HSTRING, PCWSTR},
     Win32::{
-        Foundation::{HWND, RECT},
-        UI::WindowsAndMessaging::{PeekMessageW, PM_REMOVE, TranslateMessage, DispatchMessageW, MSG},
+        Foundation::{E_FAIL, E_POINTER, HWND, RECT}, System::WinRT::EventRegistrationToken, UI::WindowsAndMessaging::{DispatchMessageW, PeekMessageW, TranslateMessage, MSG, PM_REMOVE}
     },
 };
 use webview2_com::Microsoft::Web::WebView2::Win32::{
-    CreateCoreWebView2EnvironmentWithOptions, ICoreWebView2, ICoreWebView2Controller, ICoreWebView2Environment,
+    CreateCoreWebView2EnvironmentWithOptions, ICoreWebView2, ICoreWebView2Controller, ICoreWebView2Environment, ICoreWebView2WebMessageReceivedEventArgs, ICoreWebView2WebMessageReceivedEventHandler, ICoreWebView2WebMessageReceivedEventHandler_Impl
 };
 
 use webview2_com::CreateCoreWebView2EnvironmentCompletedHandler;
 use webview2_com::CreateCoreWebView2ControllerCompletedHandler;
 
+use crate::services::ServiceManager;
+
+#[windows::core::implement(ICoreWebView2WebMessageReceivedEventHandler)]
+struct WebMessageHandler {
+    service_manager: std::sync::Arc<ServiceManager>,
+    webview: ICoreWebView2,
+}
+
+
+// impl ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageHandler_Impl {
+//     fn Invoke(
+//         &self,
+//         _sender: windows::core::Ref<'_, ICoreWebView2>,
+//         args: windows::core::Ref<'_, ICoreWebView2WebMessageReceivedEventArgs>,
+//     ) -> windows::core::Result<()> {
+//         let args = args.as_ref().ok_or_else(|| windows::core::Error::new(E_POINTER, "Null args"))?;
+        
+//         let mut message = HSTRING::default();
+//         unsafe {
+//             args.TryGetWebMessageAsString(&mut message as *mut _ as _)?;
+//         }
+        
+//         let response = self.service_manager.handle_web_message(&message.to_string())
+//             .map_err(|e| windows::core::Error::new(E_FAIL, e.to_string()))?;
+        
+//         unsafe { self.webview.PostWebMessageAsString(&HSTRING::from(response)) }?;
+        
+//         Ok(())
+//     }
+// }
+
+
+impl ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageHandler_Impl {
+    fn Invoke(
+        &self,
+        _sender: windows::core::Ref<'_, ICoreWebView2>,
+        args: windows::core::Ref<'_, ICoreWebView2WebMessageReceivedEventArgs>,
+    ) -> windows::core::Result<()> {
+        let args = args.as_ref().ok_or_else(|| windows::core::Error::new(E_POINTER, "Null args"))?;
+        
+        let mut message = HSTRING::default();
+        unsafe {
+            args.TryGetWebMessageAsString(&mut message as *mut _ as _)?;
+        }
+        
+        // Handle JSON string
+        let response = self.service_manager.handle_web_message(&message.to_string())
+            .map_err(|e| windows::core::Error::new(E_FAIL, e.to_string()))?;
+
+        // Send response back as string
+        unsafe { self.webview.PostWebMessageAsString(&HSTRING::from(response)) }?;
+        
+        Ok(())
+    }
+}
 
 
 pub struct WebViewManager {
     _controller: ICoreWebView2Controller,
-    _webview: ICoreWebView2,
+    webview: ICoreWebView2,
+    _message_token: EventRegistrationToken,
+    service_manager: std::sync::Arc<ServiceManager>,
 }
 
 impl WebViewManager {
@@ -27,6 +83,7 @@ impl WebViewManager {
         initial_url: String,
         width: i32,
         height: i32,
+        service_manager: std::sync::Arc<ServiceManager>,
     ) -> Result<Self> {
         let user_data_path = HSTRING::from(user_data_path);
         let initial_url = HSTRING::from(initial_url);
@@ -104,10 +161,40 @@ impl WebViewManager {
         };
 
         // Configure WebView
-        let webview = unsafe { controller.CoreWebView2() }
+       let webview = unsafe { controller.CoreWebView2() }
             .context("Failed to get WebView from controller")?;
 
+        // Navigate to initial URL
+        unsafe { webview.Navigate(PCWSTR::from_raw(initial_url.as_ptr())) }
+            .context("Failed to navigate to initial URL")?;
 
+        // Inject JavaScript bridge
+        let js_bridge = include_str!("./bridge.js");
+        unsafe {
+            webview.AddScriptToExecuteOnDocumentCreated(
+                &HSTRING::from(js_bridge),
+                None,
+            )?;
+        }
+
+        let mut message_token = EventRegistrationToken::default();
+
+
+
+     let handler: ICoreWebView2WebMessageReceivedEventHandler = WebMessageHandler {
+            service_manager: service_manager.clone(),
+            webview: webview.clone(),
+        }.into();
+
+        unsafe {
+            webview.add_WebMessageReceived(
+                &handler,
+                &mut message_token,
+            )
+        }?;
+
+
+        // Set bounds and return
         let bounds = RECT {
             left: 0,
             top: 0,
@@ -117,12 +204,11 @@ impl WebViewManager {
         unsafe { controller.SetBounds(bounds) }
             .context("Failed to set WebView bounds")?;
 
-        unsafe { webview.Navigate(PCWSTR::from_raw(initial_url.as_ptr())) }
-            .context("Failed to navigate to initial URL")?;
-
         Ok(Self {
             _controller: controller,
-            _webview: webview,
+            webview,
+            _message_token: message_token,
+            service_manager,
         })
     }
 

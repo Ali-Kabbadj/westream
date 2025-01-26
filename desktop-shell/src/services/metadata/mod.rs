@@ -1,6 +1,7 @@
 // src/services/metadata/mod.rs
 use serde::Serialize;
 
+
 #[derive(Serialize, Clone)]
 pub struct MediaItem {
     id: String,
@@ -9,6 +10,8 @@ pub struct MediaItem {
     poster: String,
 }
 
+// allow unused variables
+#[allow(dead_code)]
 pub struct MockMetadataService;
 
 impl MockMetadataService {
@@ -47,4 +50,7 @@ impl MockMetadataService {
             ]
         ].concat()
     }
+
+
+ 
 }

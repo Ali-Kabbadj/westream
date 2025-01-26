@@ -1,64 +1,4 @@
-
-// use anyhow::Result;
-// use windows::{
-//     core::*,
-//     Win32::{
-//         Foundation::*,
-//         UI::WindowsAndMessaging::*,
-//         Graphics::Gdi::{GetStockObject, HBRUSH, WHITE_BRUSH},
-//         System::LibraryLoader::GetModuleHandleW,
-//     },
-// };
-
-// pub unsafe fn create_window_instance(config: &crate::config::WindowConfig) -> Result<HWND> {
-//     let hmodule = GetModuleHandleW(None)?;
-//     let hinstance = HINSTANCE(hmodule.0); // Convert HMODULE to HINSTANCE
-//     let class_name = w!("StremioWindowClass");
-
-//     let wc = WNDCLASSW {
-//         style: CS_HREDRAW | CS_VREDRAW,
-//         lpfnWndProc: Some(wndproc),
-//         hInstance: hinstance,
-//         lpszClassName: class_name,
-//         hbrBackground: HBRUSH(GetStockObject(WHITE_BRUSH).0),
-//         ..Default::default()
-//     };
-
-//     RegisterClassW(&wc);
-//     let title_wide: Vec<u16> = config.title.encode_utf16().chain(std::iter::once(0)).collect();
-
-//     let hwnd = CreateWindowExW(
-//         WINDOW_EX_STYLE::default(),
-//         class_name,
-//         PCWSTR(title_wide.as_ptr()),
-//         WS_OVERLAPPEDWINDOW | WS_THICKFRAME,
-//         config.position.0,
-//         config.position.1,
-//         config.width,
-//         config.height,
-//         None,
-//         None,
-//         Some(hinstance),
-//         None,
-//     )?;
-
-//     Ok(hwnd)
-// }
-
-// extern "system" fn wndproc(
-//     hwnd: HWND,
-//     msg: u32,
-//     wparam: WPARAM,
-//     lparam: LPARAM,
-// ) -> LRESULT {
-//     match msg {
-//         WM_DESTROY => {
-//             unsafe { PostQuitMessage(0) };
-//             LRESULT(0)
-//         }
-//         _ => unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) },
-//     }
-// }
+use std::sync::Arc;
 
 use anyhow::Result;
 use windows::{
@@ -112,9 +52,9 @@ pub unsafe fn create_window_instance(title: &str, width: i32, height: i32) -> Re
 use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_SIZE};
 use windows::Win32::Foundation::RECT;
 
-use crate::webview::manager;
+use crate::{services::ServiceManager, webview::manager::{self, WebViewManager}};
 
-
+#[allow(unused_variables)]
 extern "system" fn wndproc(
     hwnd: HWND,
     msg: u32,
@@ -139,6 +79,14 @@ extern "system" fn wndproc(
             if !webview_ptr.is_null() {
                 let webview_manager = unsafe { &*webview_ptr };
                 let _ = webview_manager.resize(width, height);
+            }
+
+              let managers_ptr = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) } 
+                as *mut (WebViewManager, Arc<ServiceManager>);
+            
+            if !managers_ptr.is_null() {
+                let (webview_manager, service_manager) = unsafe { &*managers_ptr };
+                // Handle async operations here
             }
 
             LRESULT(0)
