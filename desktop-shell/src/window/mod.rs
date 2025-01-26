@@ -20,7 +20,7 @@ pub fn create_window(config: &WindowConfig) -> Result<HWND> {
             .context("Win32 window creation failed")?
     };
 
-   styling::apply_window_styles(hwnd);
+//    styling::apply_window_styles(hwnd);
 
     unsafe {
         let _ = ShowWindow(hwnd, SW_SHOW);

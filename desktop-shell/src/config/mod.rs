@@ -37,31 +37,6 @@ pub fn load() -> Result<AppConfig> {
     
     if config_path.exists() {
         let content = std::fs::read_to_string(config_path)?;
-        // check all the variables in the file, if one of them is missing create it (ie update the file)
-        let mut config: AppConfig = serde_json::from_str(&content)?;
-        info!("content loaded: {:#?}", content);
-        if config.window.title.is_empty() {
-            config.window.title = defaults::window_title();
-        }
-        if config.window.position == (0, 0) {
-            config.window.position = defaults::window_position();
-        }
-        if config.window.width == 0 {
-            config.window.width = defaults::window_width();
-        }
-        if config.window.height == 0 {
-            config.window.height = defaults::window_height();
-        }
-        if config.webview.initial_url.is_empty() {
-            config.webview.initial_url = defaults::webview_initial_url();
-        }
-        if config.webview.width == 0 {
-            config.webview.width = defaults::webview_width();
-        }
-        if config.webview.height == 0 {
-            config.webview.height = defaults::webview_height();
-        }
-
         Ok(serde_json::from_str(&content)?)
     } else {
         let default_config = AppConfig {

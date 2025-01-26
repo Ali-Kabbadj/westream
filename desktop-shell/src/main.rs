@@ -8,6 +8,7 @@ mod ui;
 
 use anyhow::{Context, Result};
 use log::info;
+use webview::manager;
 use windows::Win32::{System::Com, UI::WindowsAndMessaging::{SetWindowLongPtrW, GWLP_USERDATA}};
 
 
@@ -28,13 +29,15 @@ fn main() -> Result<()> {
     let hwnd = window::create_window(&config.window).context("Window creation failed")?;
 
     // Create WebView on the main thread
-    let webview_manager = webview::WebViewManager::create(
+    let webview_manager = manager::WebViewManager::create(
         hwnd,
         config.webview.user_data_path.to_str().context("Invalid user data path")?,
         config.webview.initial_url,
         config.webview.width,
         config.webview.height
     ).context("WebView initialization failed")?;
+
+
 
     // Store WebViewManager reference in window user data
     unsafe {

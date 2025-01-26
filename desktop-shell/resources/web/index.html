@@ -1,0 +1,15 @@
+<div id="root">
+  <search-bar></search-bar>
+  <media-grid></media-grid>
+  <player-overlay></player-overlay>
+</div>
+
+<script type="module">
+  import { JsBridge } from "/bindings.js";
+  const bridge = new JsBridge();
+
+  window.search = async (query) => {
+    const results = await bridge.search(query);
+    updateGrid(results);
+  };
+</script>
