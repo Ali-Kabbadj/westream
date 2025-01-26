@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-// src/lib/rust.ts
 type RustRequest<T = unknown> = {
   requestId: string;
   cmd: string;
@@ -14,12 +11,20 @@ type RustResponse<T = unknown> = {
   error?: string;
 };
 
-// Extend Window interface properly
 declare global {
   interface Window {
     chrome?: {
       webview?: {
         postMessage: (message: string) => void;
+        addEventListener: (
+          type: "message",
+          listener: (event: { data: string }) => void,
+          options?: { signal?: AbortSignal },
+        ) => void;
+        removeEventListener: (
+          type: "message",
+          listener: (event: { data: string }) => void,
+        ) => void;
       };
     };
   }
@@ -36,48 +41,56 @@ export const rustBridge = {
       const requestId = crypto.randomUUID();
       const abortController = new AbortController();
 
-      // Safe timeout handling
       const timeoutId = window.setTimeout(() => {
         abortController.abort();
         reject(new Error(`Request timed out after 5000ms (${command})`));
       }, 5000);
 
-      const messageHandler = (event: MessageEvent) => {
+      const messageHandler = (event: { data: string | object }) => {
         try {
-          const rawData =
-            event.data instanceof Object
-              ? JSON.stringify(event.data)
-              : event.data;
-          const data: unknown = JSON.parse(rawData);
+          console.debug("[WebView] Raw message received:", event.data);
 
-          if (typeof data !== "object" || data === null) {
+          // Handle both string and object data
+          const rawData =
+            typeof event.data === "string"
+              ? event.data
+              : JSON.stringify(event.data);
+
+          // Parse the message envelope
+          const envelope: unknown = JSON.parse(rawData);
+
+          if (typeof envelope !== "object" || envelope === null) {
             throw new Error("Invalid response format");
           }
 
-          const response = data as RustResponse<T>;
+          // Type guard for RustResponse
+          const response = envelope as RustResponse<T>;
 
           if (response.requestId !== requestId) return;
 
           window.clearTimeout(timeoutId);
-          window.removeEventListener("message", messageHandler);
-
-          if (response.error) {
-            throw new Error(response.error);
-          }
+          window.chrome?.webview?.removeEventListener(
+            "message",
+            messageHandler,
+          );
 
           if (!response.success || !response.data) {
-            throw new Error("Request failed without error message");
+            throw new Error(response.error ?? "Request failed");
           }
 
+          // Directly use the already-parsed data
           resolve(response.data);
         } catch (error) {
           window.clearTimeout(timeoutId);
-          window.removeEventListener("message", messageHandler);
+          window.chrome?.webview?.removeEventListener(
+            "message",
+            messageHandler,
+          );
           reject(error instanceof Error ? error : new Error("Unknown error"));
         }
       };
 
-      window.addEventListener("message", messageHandler, {
+      window.chrome.webview.addEventListener("message", messageHandler, {
         signal: abortController.signal,
       });
 
@@ -87,7 +100,6 @@ export const rustBridge = {
           cmd: command,
           args: args ?? null,
         };
-
         window.chrome.webview.postMessage(JSON.stringify(request));
       } catch (error) {
         abortController.abort();

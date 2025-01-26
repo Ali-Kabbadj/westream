@@ -12,11 +12,11 @@ use webview2_com::{
 use windows::{
     core::{HSTRING, PCWSTR},
     Win32::{
-        Foundation::{E_POINTER, HWND, LPARAM, RECT, WPARAM},
+        Foundation::{E_POINTER, HWND, RECT},
         System::{Com, WinRT::EventRegistrationToken},
         UI::WindowsAndMessaging::{
-            DispatchMessageW, IsWindow, PeekMessageW, PostMessageW, SetWindowLongPtrW,
-            TranslateMessage, GWLP_USERDATA, MSG, PM_REMOVE, WM_USER,
+            DispatchMessageW, IsWindow, PeekMessageW, SetWindowLongPtrW,
+            TranslateMessage, GWLP_USERDATA, MSG, PM_REMOVE
         },
     },
 };
@@ -25,7 +25,6 @@ use windows::{
 struct WebMessageHandler {
     service_manager: std::sync::Arc<ServiceManager>,
     webview: ICoreWebView2,
-    parent_hwnd: HWND,
 }
 
 impl WebMessageHandler {
@@ -41,72 +40,7 @@ impl WebMessageHandler {
     }
 }
 
-// impl ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageHandler_Impl {
-//     fn Invoke(
-//         &self,
-//         _sender: windows::core::Ref<'_, ICoreWebView2>,
-//         args: windows::core::Ref<'_, ICoreWebView2WebMessageReceivedEventArgs>,
-//     ) -> windows::core::Result<()> {
-//         log::debug!("Received web message");
-//         let args = args
-//             .as_ref()
-//             .ok_or_else(|| windows::core::Error::new(E_POINTER, "Null args"))?;
 
-//         let mut message_pwstr: windows::core::PWSTR = windows_core::PWSTR(std::ptr::null_mut());
-//         unsafe {
-//             args.TryGetWebMessageAsString(&mut message_pwstr)
-//                 .map_err(|e| {
-//                     log::error!("TryGetWebMessageAsString failed: {:?}", e);
-//                     e
-//                 })?;
-//         }
-
-//         // Convert PWSTR to a Rust String
-//         let message = unsafe {
-//             if message_pwstr.is_null() {
-//                 log::error!("TryGetWebMessageAsString returned a null pointer");
-//                 return Ok(());
-//             }
-//             let message_str = windows::core::HSTRING::from_wide(std::slice::from_raw_parts(
-//                 message_pwstr.0 as *const u16,
-//                 (0..)
-//                     .take_while(|&i| *message_pwstr.0.offset(i) != 0)
-//                     .count(),
-//             ))
-//             .to_string();
-
-//             // Free the memory allocated by TryGetWebMessageAsString
-//             windows::Win32::System::Com::CoTaskMemFree(Some(message_pwstr.0 as *mut _));
-
-//             message_str
-//         };
-
-//         log::debug!("Processing message: {}", message);
-//         if message.is_empty() {
-//             log::warn!("Received empty WebMessage");
-//             return Ok(());
-//         }
-
-//         // Access fields via self.this instead of self.0
-//         let response = self
-//             .this
-//             .handle_message(message.to_string())
-//             .contains("success");
-
-//         unsafe {
-//             let lparam = Box::into_raw(Box::new(response)) as _;
-//             PostMessageW(
-//                 Some(self.this.parent_hwnd), // Use self.this here
-//                 WM_USER + 1,
-//                 WPARAM(0),
-//                 LPARAM(lparam),
-//             )
-//             .ok();
-//         }
-
-//         Ok(())
-//     }
-// }
 
 impl ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageHandler_Impl {
     fn Invoke(
@@ -130,7 +64,6 @@ impl ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageHandler_Impl
 
         log::debug!("Received message: {:?}", message_pwstr);
         log::debug!("Processing message...");
-        // Convert PWSTR to a Rust String safely
         let message_str = unsafe {
             if message_pwstr.is_null() {
                 log::error!("TryGetWebMessageAsString returned a null pointer");
@@ -152,22 +85,8 @@ impl ICoreWebView2WebMessageReceivedEventHandler_Impl for WebMessageHandler_Impl
 
         log::debug!("Returning response to UI thread");
 
-        // Handle the message and get response
         let response = self.this.handle_message(message_str);
 
-        // Send response back to UI thread
-        // unsafe {
-        //     let lparam = Box::into_raw(Box::new(response)) as _;
-        //     PostMessageW(
-        //         Some(self.this.parent_hwnd),
-        //         WM_USER + 1,
-        //         WPARAM(0),
-        //         LPARAM(lparam),
-        //     )
-        //     .ok();
-        // }
-
-        // Replace the PostMessageW block with:
         let response_json = HSTRING::from(response);
         unsafe {
             self.webview
@@ -188,7 +107,6 @@ pub struct WebViewManager {
     webview: ICoreWebView2,
     _message_token: EventRegistrationToken,
     _handler: ICoreWebView2WebMessageReceivedEventHandler,
-    service_manager: std::sync::Arc<ServiceManager>,
 }
 
 impl WebViewManager {
@@ -303,7 +221,6 @@ impl WebViewManager {
         let handler: ICoreWebView2WebMessageReceivedEventHandler = WebMessageHandler {
             service_manager: service_manager.clone(),
             webview: webview.clone(),
-            parent_hwnd: hwnd,
         }
         .into();
 
@@ -333,7 +250,6 @@ impl WebViewManager {
             webview,
             _message_token: message_token,
             _handler: handler,
-            service_manager,
         })
     }
 

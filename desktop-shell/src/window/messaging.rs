@@ -61,6 +61,22 @@ extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM)
             }
             LRESULT(0)
         }
+        WM_SIZE => {
+            unsafe {
+                let ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut manager::WebViewManager;
+                if !ptr.is_null() {
+                    // Extract dimensions using bitwise operations
+                    let width = (lparam.0 as u32 & 0xFFFF) as i32; // LOWORD equivalent
+                    let height = ((lparam.0 as u32 >> 16) & 0xFFFF) as i32; // HIWORD equivalent
+
+                    let webview = &*ptr;
+                    if let Err(e) = webview.resize(width, height) {
+                        log::error!("Resize failed: {}", e);
+                    }
+                }
+            }
+            LRESULT(0)
+        }
         val if val == WM_USER + 1 => {
             // Handle web messages safely
             log::debug!("Received WM_USER+1 message");
