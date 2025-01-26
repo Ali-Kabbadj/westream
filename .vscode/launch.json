@@ -1,3 +1,21 @@
+// {
+//   "version": "0.2.0",
+//   "configurations": [
+//     {
+//       "name": "Debug Desktop Shell",
+//       "type": "lldb",
+//       "request": "launch",
+//       "program": "${workspaceFolder}/desktop-shell/target/debug/desktop-shell",
+//       "args": [],
+//       "cwd": "${workspaceFolder}/desktop-shell",
+//       "preLaunchTask": "cargo-build",
+//       "env": {
+//         "RUST_BACKTRACE": "1",
+//         "RUST_LOG": "debug"
+//       }
+//     }
+//   ]
+// }
 {
   "version": "0.2.0",
   "configurations": [
@@ -5,10 +23,17 @@
       "name": "Debug Desktop Shell",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/desktop-shell/target/debug/desktop-shell",
+      "program": "${workspaceFolder}/desktop-shell/target/x86_64-pc-windows-msvc/debug/desktop-shell.exe",
       "args": [],
       "cwd": "${workspaceFolder}/desktop-shell",
-      "preLaunchTask": "cargo-build"
+      "preLaunchTask": "cargo-nightly-build",
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "RUST_LOG": "debug"
+      },
+      "sourceMap": {
+        "/rustc/": "${env:HOME}/.rustup/toolchains/nightly-x86_64-pc-windows-msvc/lib/rustlib/src/rust/"
+      }
     }
   ]
 }

@@ -14,7 +14,7 @@ pub fn configure_webview_window(hwnd: HWND) {
         );
         
         // Set DPI awareness
-        SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     }
 }
 

@@ -62,12 +62,26 @@ extern "system" fn wndproc(
     lparam: LPARAM,
 ) -> LRESULT {
     match msg {
-        WM_DESTROY => {
+       WM_DESTROY => {
+            // Safely clean up WebViewManager
+            log::info!("WM_DESTROY received for HWND {:?}", hwnd);
+            let webview_ptr = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) } as *mut WebViewManager;
+            if !webview_ptr.is_null() {
+                unsafe {
+                    // Take ownership and drop
+                    log::debug!("ownership and drop : WM_SIZE handler - webview_ptr: {:p}", webview_ptr);
+                    // let _ = Box::from_raw(webview_ptr);
+                    // SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0);
+                     let _ = Box::from_raw(webview_ptr); 
+                }
+            }
             unsafe { PostQuitMessage(0) };
             LRESULT(0)
         }
         WM_SIZE => {
             // Get client area dimensions
+            log::debug!("WM_SIZE - HWND validity: {}", unsafe { IsWindow(Some(hwnd)).as_bool() });
+
             let mut client_rect = RECT::default();
             unsafe { let _ = GetClientRect(hwnd, &mut client_rect); };
             
@@ -81,7 +95,7 @@ extern "system" fn wndproc(
                 let _ = webview_manager.resize(width, height);
             }
 
-              let managers_ptr = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) } 
+            let managers_ptr = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) } 
                 as *mut (WebViewManager, Arc<ServiceManager>);
             
             if !managers_ptr.is_null() {

@@ -33,7 +33,11 @@ pub fn create_window(config: &WindowConfig) -> Result<HWND> {
 pub fn run_message_loop(_hwnd: HWND) -> Result<()> {
     let mut msg = MSG::default();
     while unsafe { GetMessageW(&mut msg, None, 0, 0) }.into() {
-        unsafe {
+        if unsafe { !IsWindow(Some(_hwnd)).as_bool() } {
+            log::info!("Window was destroyed, exiting run_message_loop");
+            break;
+        }
+       unsafe {
             let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }

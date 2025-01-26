@@ -60,7 +60,7 @@ export const rustBridge = {
         JSON.stringify({
           requestId,
           cmd: command,
-          args,
+          args: args || {}, // Ensure args always exists
         }),
       );
     });

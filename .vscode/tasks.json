@@ -1,15 +1,61 @@
+// {
+//   "version": "2.0.0",
+//   "tasks": [
+//     {
+//       "label": "cargo-build",
+//       "type": "cargo",
+//       "command": "+nightly build",
+//       "args": ["-Zbuild-std", "--target", "x86_64-pc-windows-msvc"],
+//       "group": "build",
+//       "problemMatcher": ["$rustc"],
+//       "options": {
+//         "cwd": "${workspaceFolder}/desktop-shell"
+//       }
+//     }
+//   ]
+// }
+// {
+//   "version": "2.0.0",
+//   "tasks": [
+//     {
+//       "label": "cargo-nightly-build",
+//       "type": "process",
+//       "command": "cargo",
+//       "args": [
+//         "+nightly",
+//         "build",
+//         "--target",
+//         "x86_64-pc-windows-msvc",
+//         "--package",
+//         "desktop-shell"
+//       ],
+//       "group": "build",
+//       "problemMatcher": ["$rustc"],
+//       "options": {
+//         "cwd": "${workspaceFolder}/desktop-shell"
+//       }
+//     }
+//   ]
+// }
+
 {
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "cargo-build",
+      "label": "cargo-nightly-build",
       "type": "cargo",
       "command": "build",
-      "args": [],
-      "group": "build",
+      "args": ["--target", "x86_64-pc-windows-msvc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
       "problemMatcher": ["$rustc"],
       "options": {
-        "cwd": "${workspaceFolder}/desktop-shell"
+        "cwd": "${workspaceFolder}/desktop-shell",
+        "env": {
+          "RUSTUP_TOOLCHAIN": "nightly"
+        }
       }
     }
   ]

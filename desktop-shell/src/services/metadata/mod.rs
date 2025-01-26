@@ -4,10 +4,10 @@ use serde::Serialize;
 
 #[derive(Serialize, Clone)]
 pub struct MediaItem {
-    id: String,
-    title: String,
-    year: i32,
-    poster: String,
+    pub id: String,     
+    pub title: String,    
+    pub year: i32,        
+    pub poster: String,  
 }
 
 // allow unused variables

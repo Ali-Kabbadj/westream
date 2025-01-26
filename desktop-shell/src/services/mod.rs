@@ -21,6 +21,7 @@ impl ServiceManager {
     }
 
    pub fn handle_web_message(&self, message: &str) -> Result<String> {
+         log::info!("Received web message: {}", message);
         let value: Value = from_str(message)?;
         let cmd = value["cmd"].as_str().context("Missing command")?;
         let args = &value["args"];
@@ -37,7 +38,7 @@ impl ServiceManager {
             }
             _ => return Err(anyhow::anyhow!("Unknown command: {}", cmd)),
         };
-
+        log::debug!("Sending response: {}", response);
         Ok(to_string(&json!({
             "success": true,
             "data": response
