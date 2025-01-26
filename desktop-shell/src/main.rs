@@ -13,27 +13,33 @@ use windows::Win32::System::Com;
 
 
 fn main() -> Result<()> {
-    let _ui = ui::UiManager::new();
-
+    // Initialize logger and COM
     utils::logging::init_logger()?;
     info!("Starting desktop-shell");
 
     unsafe { Com::CoInitializeEx(Some(std::ptr::null()), Com::COINIT_APARTMENTTHREADED) }
-    .ok() 
-    .context("COM initialization failed")?;
+        .ok()
+        .context("COM initialization failed")?;
 
+    // Load config
     let config = config::load().context("Failed to load config")?;
+
+    // Create window
     let hwnd = window::create_window(&config.window).context("Window creation failed")?;
 
-    // Add underscores:
-    let _webview = webview::WebViewManager::create(hwnd, &config.webview)
-        .context("WebView initialization failed")?;
+    // Create WebView on the main thread
+    let _webview = webview::WebViewManager::create(
+        hwnd,
+        config.webview.user_data_path.to_str().context("Invalid user data path")?,
+        config.webview.initial_url,
+        config.webview.width,
+        config.webview.height
+    ).context("WebView initialization failed")?;
 
-    let _services = services::ServiceManager::init()
-        .context("Service initialization failed")?;
-
+    // Run the main message loop
     window::run_message_loop(hwnd)?;
 
+    // Cleanup
     unsafe { Com::CoUninitialize() };
     Ok(())
 }

@@ -2,6 +2,7 @@ use anyhow::Result;
 mod playback;
 mod addons;
 
+#[allow(dead_code)]
 pub struct ServiceManager {
     pub playback: playback::PlaybackService,
     pub addons: addons::AddonManager,

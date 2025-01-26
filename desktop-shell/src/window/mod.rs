@@ -14,8 +14,9 @@ mod messaging;
 
 
 pub fn create_window(config: &WindowConfig) -> Result<HWND> {
+
     let hwnd = unsafe {
-        messaging::create_window_instance(config)
+        messaging::create_window_instance(&config.title, config.width, config.height)
             .context("Win32 window creation failed")?
     };
 
@@ -31,10 +32,19 @@ pub fn create_window(config: &WindowConfig) -> Result<HWND> {
 
 pub fn run_message_loop(_hwnd: HWND) -> Result<()> {
     let mut msg = MSG::default();
-    while unsafe { GetMessageW(&mut msg, HWND(0), 0, 0) }.into() {
+    while unsafe { GetMessageW(&mut msg, None, 0, 0) }.into() {
         unsafe {
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
+        }
+        if cfg!(windows) {
+            unsafe {
+                let mut msg = MSG::default();
+                while PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).into() {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+            }
         }
     }
     Ok(())

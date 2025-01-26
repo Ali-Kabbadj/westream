@@ -4,8 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-webview2 = "0.1.4"
-windows = { version = "0.54.0", features = [
+webview2-com = "0.35.0"
+webview2-com-macros = "0.8.0"
+webview2-com-sys = "0.35.0"
+windows-core = "0.59.0"
+windows-targets = "0.53.0" 
+windows-interface = "0.59.0"  
+windows = { version = "0.59.0", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_LibraryLoader",
@@ -13,14 +18,17 @@ windows = { version = "0.54.0", features = [
     "Win32_UI_Controls",
     "Win32_Graphics_Gdi",
     "Win32_System_Com",
-    "implement" 
-]}
+    "Win32_System_WinRT",
+    "Win32_Globalization",
+    "Win32_System_Ole",
+    "Win32_System_Variant",
+] }
+
+windows-implement = "0.59.0" 
 anyhow = "1.0.95"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.137"
 log = "0.4.25"
-directories = "6.0.0" # For config paths
-thiserror = "2.0.11"  # Add this
-env_logger = "0.11.6" # Add this
-
-# winapi = { version = "0.3.9", features = ["winuser"] }
+directories = "6.0.0"
+thiserror = "2.0.11"
+env_logger = "0.11.6"
