@@ -1,6 +1,7 @@
 // frontend/src/app/page.tsx
 "use client";
 import { useEffect, useState } from "react";
+import { rustBridge } from "@/lib/rust";
 
 type MediaItem = {
   id: string;
@@ -15,14 +16,14 @@ export default function Home() {
 
   useEffect(() => {
     // Load initial catalog
-    window.__RUST_BRIDGE
+    rustBridge
       .invoke("getCatalog")
       .then((data) => setCatalog(data))
       .catch(console.error);
   }, []);
 
   const handleSearch = async (query: string) => {
-    const results = await window.__RUST_BRIDGE.invoke("search", query);
+    const results = await rustBridge.invoke("search", query);
     setSearchResults(results);
   };
 
