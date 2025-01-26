@@ -21,7 +21,7 @@ fn main() -> Result<()> {
         .ok()
         .context("COM initialization failed")?;
 
-    // Load config
+    // Load config 
     let config = config::load().context("Failed to load config")?;
 
     // Create window

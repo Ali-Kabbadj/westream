@@ -8,6 +8,7 @@ pub struct ServiceManager {
     pub addons: addons::AddonManager,
 }
 
+#[allow(dead_code)]
 impl ServiceManager {
     pub fn init() -> Result<Self> {
         Ok(Self {

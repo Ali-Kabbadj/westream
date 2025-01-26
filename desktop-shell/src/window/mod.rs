@@ -23,8 +23,8 @@ pub fn create_window(config: &WindowConfig) -> Result<HWND> {
    styling::apply_window_styles(hwnd);
 
     unsafe {
-        ShowWindow(hwnd, SW_SHOW);
-        UpdateWindow(hwnd);
+        let _ = ShowWindow(hwnd, SW_SHOW);
+        let _ = UpdateWindow(hwnd);
     }
 
     Ok(hwnd)
@@ -34,14 +34,14 @@ pub fn run_message_loop(_hwnd: HWND) -> Result<()> {
     let mut msg = MSG::default();
     while unsafe { GetMessageW(&mut msg, None, 0, 0) }.into() {
         unsafe {
-            TranslateMessage(&msg);
+            let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
         if cfg!(windows) {
             unsafe {
                 let mut msg = MSG::default();
                 while PeekMessageW(&mut msg, None, 0, 0, PM_REMOVE).into() {
-                    TranslateMessage(&msg);
+                    let _ = TranslateMessage(&msg);
                     DispatchMessageW(&msg);
                 }
             }
